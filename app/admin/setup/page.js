@@ -46,9 +46,9 @@ export default function Setup() {
   return (
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={submit}>
-        <div className="brand-mark">W</div>
+        <div className="brand-mark">4</div>
         <h1>Create admin account</h1>
-        <p className="subtitle">First-time setup for Websites For Locals. This becomes your owner account.</p>
+        <p className="subtitle">First-time setup for 499web.co. This becomes your owner account.</p>
         {err && <div className="err">{err}</div>}
         <div className="field"><label>Full name</label><input value={f.fullName} onChange={set('fullName')} /></div>
         <div className="field"><label>Email</label><input type="email" value={f.email} onChange={set('email')} required /></div>

@@ -33,9 +33,9 @@ function LoginForm() {
 
   return (
     <form className="auth-card" onSubmit={submit}>
-      <div className="brand-mark">W</div>
+      <div className="brand-mark">4</div>
       <h1>Sign in</h1>
-      <p className="subtitle">Websites For Locals studio</p>
+      <p className="subtitle">Website facelifts for $499</p>
       {err && <div className="err">{err}</div>}
       <div className="field"><label>Username or email</label>
         <input value={f.identifier} onChange={e => setF({ ...f, identifier: e.target.value })} required autoComplete="username" /></div>

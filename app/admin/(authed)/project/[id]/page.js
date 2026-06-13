@@ -33,6 +33,29 @@ function extractLogoColors(img) {
   } catch { return []; }
 }
 
+// Downscale a photo to a web-friendly size before upload (keeps sites fast and
+// uploads small). SVG/GIF are passed through untouched.
+function downscalePhoto(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (file.type === 'image/svg+xml' || file.type === 'image/gif') return resolve(file);
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('Could not read file'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        c.toBlob(b => b ? resolve(b) : reject(new Error('Could not process image')), 'image/jpeg', quality);
+      };
+      img.onerror = () => reject(new Error('Not a valid image'));
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
 // Read a logo file → { dataUrl, colors }. Rasters are downscaled to ≤512px; SVGs kept as-is.
 function processLogo(file) {
   return new Promise((resolve, reject) => {
@@ -127,6 +150,62 @@ function Field({ label, value, onChange, textarea, type, placeholder, hint }) {
         ? <textarea rows={textarea} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
         : <input type={type || 'text'} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} />}
       {hint && <div className="hint">{hint}</div>}
+    </div>
+  );
+}
+
+/* ---------- Photo library (Brief step) ---------- */
+function PhotoLibrary({ p, update, toast }) {
+  const [uploading, setUploading] = useState(0);
+  const photos = p.business.photos || [];
+
+  async function addFiles(fileList) {
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    setUploading(u => u + files.length);
+    for (const file of files) {
+      try {
+        const blob = await downscalePhoto(file);
+        const fd = new FormData();
+        const base = (file.name || 'photo').replace(/\.\w+$/, '') || 'photo';
+        fd.append('file', blob, base + (blob.type === 'image/jpeg' ? '.jpg' : ''));
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        update(np => { np.business.photos = [...(np.business.photos || []), d.url]; });
+      } catch (err) {
+        toast('Upload failed: ' + err.message, 'error');
+      } finally {
+        setUploading(u => u - 1);
+      }
+    }
+  }
+
+  function remove(url) {
+    update(np => { np.business.photos = (np.business.photos || []).filter(u => u !== url); });
+    fetch('/api/upload?url=' + encodeURIComponent(url), { method: 'DELETE' }).catch(() => {});
+  }
+
+  return (
+    <div className="card">
+      <div className="card-title">Photo library (optional)</div>
+      <div className="hint" style={{ marginBottom: 12 }}>Upload real photos of the business — they're hosted and used throughout the generated site (hero, gallery, about). Large images are auto-optimized. JPG, PNG, WebP.</div>
+      <label className="btn">📷 Upload photos
+        <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+          onChange={e => { addFiles(e.target.files); e.target.value = ''; }} />
+      </label>
+      {uploading > 0 && <span className="small muted" style={{ marginLeft: 12 }}><span className="spinner" /> Uploading {uploading}…</span>}
+      {photos.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 10, marginTop: 14 }}>
+          {photos.map((url, i) => (
+            <div key={url + i} style={{ position: 'relative', aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <button onClick={() => remove(url)} title="Remove"
+                style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.6)', color: '#fff', cursor: 'pointer', fontSize: 13, lineHeight: '22px', padding: 0 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -297,6 +376,8 @@ function Brief({ p, update, toast, go }) {
           </label>
         )}
       </div>
+
+      <PhotoLibrary p={p} update={update} toast={toast} />
 
       <div className="card">
         <div className="card-title">Design direction (optional)</div>

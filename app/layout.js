@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Websites For Locals — Studio',
+  title: '499web.co — Studio',
   robots: { index: false, follow: false }
 };
 

@@ -24,8 +24,8 @@ export default function Shell({ user, children }) {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark" style={{ width: 34, height: 34, fontSize: 17, marginBottom: 0 }}>W</div>
-          <div><div className="brand-name">Websites For Locals</div><div className="brand-sub">Find → Build → Launch</div></div>
+          <div className="brand-mark" style={{ width: 34, height: 34, fontSize: 17, marginBottom: 0 }}>4</div>
+          <div><div className="brand-name">499web.co</div><div className="brand-sub">Find → Build → Launch</div></div>
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nav.map(n => (
