@@ -50,6 +50,22 @@ export default function Settings() {
       </div>
 
       <div className="card">
+        <div className="card-title">💳 Payments (Stripe)</div>
+        {field('Stripe secret key', 'stripeSecretKey', { type: 'password', placeholder: 'sk_live_… or sk_test_…', hint: 'Stripe Dashboard → Developers → API keys.' })}
+        {field('Stripe webhook signing secret', 'stripeWebhookSecret', { type: 'password', placeholder: 'whsec_…', hint: 'Create a webhook to /api/stripe/webhook for event checkout.session.completed, then paste its signing secret.' })}
+        {field('Site price (in cents)', 'sitePriceCents', { type: 'number', placeholder: '49900', hint: '49900 = $499.00' })}
+      </div>
+
+      <div className="card">
+        <div className="card-title">✉️ Email (Resend)</div>
+        {field('Resend API key', 'resendApiKey', { type: 'password', placeholder: 're_…', hint: 'resend.com → API Keys. Verify the 499web.co domain for sending.' })}
+        <div className="row">
+          {field('From address', 'fromEmail', { placeholder: 'hello@499web.co' })}
+          {field('Team notification email', 'teamNotifyEmail', { type: 'email', placeholder: 'you@499web.co', hint: 'Where new-lead and payment alerts are sent.' })}
+        </div>
+      </div>
+
+      <div className="card">
         <div className="card-title">✍ Outreach identity</div>
         <div className="row">
           {field('Your name (email sign-off)', 'senderName', { placeholder: 'Jax' })}

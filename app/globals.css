@@ -43,6 +43,9 @@ textarea { resize:vertical; min-height:80px; line-height:1.5; }
 .badge.generated { background:rgba(232,179,75,.15); color:var(--amber); }
 .badge.published { background:rgba(91,102,245,.18); color:#aab1ff; }
 .badge.launched { background:rgba(52,201,142,.15); color:var(--green); }
+.badge.lead { background:rgba(232,179,75,.18); color:var(--amber); }
+.badge.approved { background:rgba(95,216,255,.16); color:#8fe3ff; }
+.badge.paid { background:rgba(52,201,142,.2); color:var(--green); }
 
 .spinner { width:16px; height:16px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--accent); animation:spin .8s linear infinite; display:inline-block; vertical-align:-3px; }
 @keyframes spin { to { transform:rotate(360deg); } }

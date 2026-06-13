@@ -25,8 +25,12 @@ export default function Dashboard() {
     load();
   }
 
-  const statusOf = p => p.launched ? 'launched' : p.published ? 'published' : p.hasSite ? 'generated' : 'draft';
-  const labelOf = { draft: 'Draft', generated: 'Site generated', published: 'Preview live', launched: 'Launched' };
+  // Prefer the lifecycle status; fall back to flags for older projects.
+  const statusOf = p => {
+    if (['lead', 'approved', 'paid', 'launched'].includes(p.status)) return p.status;
+    return p.launched ? 'launched' : p.published ? 'published' : p.hasSite ? 'generated' : 'draft';
+  };
+  const labelOf = { lead: 'New lead', draft: 'Draft', generated: 'Site generated', published: 'Preview live', approved: 'Approved', paid: 'Paid', launched: 'Launched' };
 
   return (
     <div className="inner wide">

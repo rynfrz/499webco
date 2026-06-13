@@ -6,7 +6,7 @@ import { requireUser, requireAdmin } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-const SECRET_KEYS = ['anthropicKey', 'vercelToken', 'netlifyToken'];
+const SECRET_KEYS = ['anthropicKey', 'vercelToken', 'netlifyToken', 'stripeSecretKey', 'stripeWebhookSecret', 'resendApiKey'];
 
 export async function GET() {
   try {

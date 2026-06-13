@@ -124,6 +124,7 @@ export default function Workspace() {
     <div className="inner wide">
       <h1>{p.business.name || 'New Business'}</h1>
       <p className="subtitle">{p.business.type}{p.business.city ? ' · ' + p.business.city : ''}</p>
+      <FunnelPanel p={p} update={update} toast={toast} />
       <div className="chips" style={{ marginBottom: 24 }}>
         {STEPS.map((s, i) => (
           <div key={s} className={'chip' + (step === i ? ' on' : '')} onClick={() => setStep(i)}>{i + 1}. {s}</div>
@@ -150,6 +151,64 @@ function Field({ label, value, onChange, textarea, type, placeholder, hint }) {
         ? <textarea rows={textarea} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
         : <input type={type || 'text'} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} />}
       {hint && <div className="hint">{hint}</div>}
+    </div>
+  );
+}
+
+/* ---------- Funnel panel: lead info, client review link, approval/payment ---------- */
+function FunnelPanel({ p, update, toast }) {
+  const [link, setLink] = useState('');
+  const isLead = p.status === 'lead';
+  const approved = ['approved', 'paid', 'launched'].includes(p.status) || !!p.approvedAt;
+  const paid = ['paid', 'launched'].includes(p.status) || !!p.payment?.paidAt;
+
+  function reviewLink() {
+    let token = p.reviewToken;
+    if (!token) {
+      token = (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2) + Date.now().toString(36));
+      update(np => { np.reviewToken = token; });
+    }
+    const url = window.location.origin + '/review/' + token;
+    setLink(url);
+    navigator.clipboard.writeText(url).then(() => toast('Client review link copied', 'success'), () => {});
+  }
+
+  const pill = (on, label) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: on ? 'var(--green)' : 'var(--muted)' }}>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: on ? 'var(--green)' : 'var(--border)' }} />{label}
+    </span>
+  );
+
+  if (!isLead && !p.reviewToken && !approved && !paid && !p.lead) {
+    // Plain project not yet in the client funnel — show just the review-link action.
+    return (
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div className="small muted">Ready to share with the client? Generate a private review &amp; pay link.</div>
+        <button className="btn" onClick={reviewLink} disabled={!p.generatedHtml}>🔗 Copy client review link</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+          {isLead && <span className="badge lead">New lead</span>}
+          {pill(!!p.generatedHtml, 'Site built')}
+          {pill(!!p.publish, 'Preview published')}
+          {pill(approved, 'Approved')}
+          {pill(paid, paid ? `Paid${p.payment?.amount ? ' $' + (p.payment.amount / 100).toFixed(0) : ''}` : 'Paid')}
+        </div>
+        <button className="btn" onClick={reviewLink} disabled={!p.generatedHtml}>🔗 Copy client review link</button>
+      </div>
+      {link && <div className="small mono" style={{ marginTop: 10, color: 'var(--muted)', wordBreak: 'break-all' }}>{link}</div>}
+      {!p.generatedHtml && <div className="hint" style={{ marginTop: 8 }}>Generate &amp; publish the site first — then the review link lets the client approve and pay.</div>}
+      {p.lead?.notes && (
+        <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
+          <div className="small muted" style={{ marginBottom: 4, fontWeight: 600 }}>What the prospect told us · {p.business.email || ''} {p.business.phone ? '· ' + p.business.phone : ''}</div>
+          <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{p.lead.notes}</div>
+        </div>
+      )}
     </div>
   );
 }

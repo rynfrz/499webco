@@ -9,10 +9,12 @@ const PUBLIC_PATHS = ['/admin/login', '/admin/setup'];
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
 
-  // Public auth pages and the APIs that power them are allowed through.
+  // Public auth pages + the public funnel APIs (lead form, client review/pay,
+  // Stripe webhook) are open. Everything else under /admin and /api is gated.
+  const PUBLIC_API = ['/api/auth/', '/api/lead', '/api/review/', '/api/approve', '/api/checkout', '/api/stripe/'];
   if (
     PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/')) ||
-    pathname.startsWith('/api/auth/')
+    PUBLIC_API.some(p => pathname === p || pathname.startsWith(p))
   ) {
     return NextResponse.next();
   }
