@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { brand } from '@/lib/brand';
 
 export default function Review() {
   const { token } = useParams();
@@ -40,7 +41,7 @@ export default function Review() {
   return (
     <div className="rv">
       <style>{CSS}</style>
-      <header className="rv-hd"><a href="/" className="rv-logo" aria-label="499 Web Co."></a>
+      <header className="rv-hd"><a href="/" className="rv-logo" aria-label={brand.name}></a>
         <span className="rv-tag">Your new website</span></header>
 
       {!d && !err && <div className="rv-mid"><span className="spin" /></div>}
@@ -73,24 +74,24 @@ export default function Review() {
           ) : !(d.approved || justApproved) ? (
             <div className="card">
               <div className="big">Love it?</div>
-              <p>Approve the design to continue. One flat price — <b>$499</b>, one time. No payment until you approve.</p>
+              <p>Approve the design to continue. One flat price — <b>{brand.priceLabel}</b>, one time. No payment until you approve.</p>
               {err && <p className="rv-err">{err}</p>}
               <button className="btn" disabled={busy === 'approve' || !d.hasSite} onClick={approve}>{busy === 'approve' ? 'Approving…' : '✓ Approve this design'}</button>
             </div>
           ) : (
             <div className="card" id="paycard">
               <div className="big">Approved ✓ — one last step</div>
-              <p>You're almost live! Pay the one-time <b>$499</b> below and we'll get your site online. Have a domain already? Add it and we'll send the exact steps to point it here.</p>
+              <p>You're almost live! Pay the one-time <b>{brand.priceLabel}</b> below and we'll get your site online. Have a domain already? Add it and we'll send the exact steps to point it here.</p>
               <label className="lbl">Your domain (optional)</label>
               <input className="inp" value={domain} onChange={e => setDomain(e.target.value)} placeholder="yourbusiness.com" />
               {err && <p className="rv-err">{err}</p>}
-              <button className="btn pay" disabled={busy === 'pay'} onClick={pay}>{busy === 'pay' ? 'Starting secure checkout…' : 'Pay $499 & go live →'}</button>
+              <button className="btn pay" disabled={busy === 'pay'} onClick={pay}>{busy === 'pay' ? 'Starting secure checkout…' : `Pay ${brand.priceLabel} & go live →`}</button>
               <p className="fine">Secure payment by Stripe. You'll be redirected to a secure checkout page.</p>
             </div>
           )}
         </div>
       )}
-      <footer className="rv-ft">499 Web Co. · Great websites for $499 · Gwinnett County &amp; Metro Atlanta</footer>
+      <footer className="rv-ft">{brand.name} · Great websites for {brand.priceLabel} · {brand.region}</footer>
     </div>
   );
 }
@@ -101,7 +102,7 @@ const CSS = `
   min-height:100vh;background:radial-gradient(1100px 600px at 80% -10%,rgba(26,166,255,.16),transparent 60%),radial-gradient(900px 600px at 0 5%,rgba(255,46,126,.12),transparent 55%),var(--ink);
   color:#eaf0ff;font-family:-apple-system,Segoe UI,Inter,sans-serif}
 .rv-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(7,8,12,.7);backdrop-filter:blur(12px);z-index:5}
-.rv-logo{display:block;height:40px;width:150px;background:url(/brand/logo.png) left center/contain no-repeat;filter:drop-shadow(0 2px 10px rgba(26,166,255,.35))}
+.rv-logo{display:block;height:40px;width:150px;background:url(${brand.logoPath}) left center/contain no-repeat;filter:drop-shadow(0 2px 10px rgba(26,166,255,.35))}
 .rv-tag{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;letter-spacing:.14em;font-size:12px;color:var(--muted)}
 .rv-wrap{max-width:1000px;margin:0 auto;padding:40px 24px 80px}
 .rv-mid{display:flex;align-items:center;justify-content:center;min-height:50vh}

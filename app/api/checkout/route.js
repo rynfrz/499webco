@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { projectByToken, putProject, getSettings } from '@/lib/db';
 import { createCheckoutSession } from '@/lib/stripe';
+import { brand } from '@/lib/brand';
 
 export const runtime = 'nodejs';
 
@@ -19,11 +20,11 @@ export async function POST(req) {
     if (domain) { p.payment = { ...(p.payment || {}), domain: String(domain).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '') }; await putProject(p); }
 
     const origin = new URL(req.url).origin;
-    const amount = Number(s.sitePriceCents) || 49900;
+    const amount = Number(s.sitePriceCents) || brand.priceCents;
     const session = await createCheckoutSession({
       secretKey: s.stripeSecretKey,
       amount,
-      productName: `499 Web Co. — Website for ${p.business.name}`,
+      productName: `${brand.name} — Website for ${p.business.name}`,
       customerEmail: p.business.email || undefined,
       successUrl: `${origin}/review/${token}?paid=1`,
       cancelUrl: `${origin}/review/${token}?canceled=1`,
