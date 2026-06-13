@@ -162,6 +162,8 @@ function FunnelPanel({ p, update, toast }) {
   const approved = ['approved', 'paid', 'launched'].includes(p.status) || !!p.approvedAt;
   const paid = ['paid', 'launched'].includes(p.status) || !!p.payment?.paidAt;
 
+  const [sending, setSending] = useState(false);
+
   function reviewLink() {
     let token = p.reviewToken;
     if (!token) {
@@ -171,6 +173,19 @@ function FunnelPanel({ p, update, toast }) {
     const url = window.location.origin + '/review/' + token;
     setLink(url);
     navigator.clipboard.writeText(url).then(() => toast('Client review link copied', 'success'), () => {});
+  }
+
+  async function emailPreview() {
+    if (!p.business.email) return toast('Add the prospect\'s email in Step 1 first', 'error');
+    if (!p.publish) return toast('Publish the preview first', 'error');
+    setSending(true);
+    try {
+      const res = await fetch('/api/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId: p.id, notify: true }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      update(np => { np.previewEmailedAt = Date.now(); });
+      toast('Review link emailed to ' + p.business.email, 'success');
+    } catch (e) { toast(e.message, 'error'); } finally { setSending(false); }
   }
 
   const pill = (on, label) => (
@@ -202,6 +217,16 @@ function FunnelPanel({ p, update, toast }) {
         <button className="btn" onClick={reviewLink} disabled={!p.generatedHtml}>🔗 Copy client review link</button>
       </div>
       {link && <div className="small mono" style={{ marginTop: 10, color: 'var(--muted)', wordBreak: 'break-all' }}>{link}</div>}
+      {p.publish && (
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {p.previewEmailedAt
+            ? <span className="small" style={{ color: 'var(--green)' }}>✉ Review link emailed {new Date(p.previewEmailedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at {new Date(p.previewEmailedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+            : <span className="small muted">✉ Review link not emailed yet{p.business.email ? '' : ' (no prospect email on file)'}</span>}
+          <button className="btn ghost small" style={{ padding: '5px 12px' }} disabled={sending || !p.business.email} onClick={emailPreview}>
+            {sending ? 'Sending…' : (p.previewEmailedAt ? 'Resend email' : 'Email review link')}
+          </button>
+        </div>
+      )}
       {!p.generatedHtml && <div className="hint" style={{ marginTop: 8 }}>Generate &amp; publish the site first — then the review link lets the client approve and pay.</div>}
       {p.lead?.notes && (
         <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>

@@ -14,10 +14,14 @@ export default function Review() {
   useEffect(() => { load(); setPaidParam(new URLSearchParams(window.location.search).get('paid') === '1'); }, [token]);
 
   async function approve() {
-    setBusy('approve');
+    setErr(''); setBusy('approve');
     const res = await fetch('/api/approve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
-    setBusy('');
-    if (res.ok) load(); else setErr((await res.json()).error || 'Error');
+    if (res.ok) {
+      await load();
+      setBusy('');
+      // Surface the payment step clearly.
+      setTimeout(() => { const el = document.getElementById('paycard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
+    } else { setBusy(''); setErr((await res.json()).error || 'Error'); }
   }
   async function pay() {
     setBusy('pay');
@@ -69,9 +73,9 @@ export default function Review() {
               <button className="btn" disabled={busy === 'approve' || !d.hasSite} onClick={approve}>{busy === 'approve' ? 'Approving…' : '✓ Approve this design'}</button>
             </div>
           ) : (
-            <div className="card">
-              <div className="big">Approved ✓ — let's make it live</div>
-              <p>Last step: pay the one-time <b>$499</b> and we'll get you online. Have a domain already? Add it and we'll send the exact steps to point it here.</p>
+            <div className="card" id="paycard">
+              <div className="big">Approved ✓ — one last step</div>
+              <p>You're almost live! Pay the one-time <b>$499</b> below and we'll get your site online. Have a domain already? Add it and we'll send the exact steps to point it here.</p>
               <label className="lbl">Your domain (optional)</label>
               <input className="inp" value={domain} onChange={e => setDomain(e.target.value)} placeholder="yourbusiness.com" />
               {err && <p className="rv-err">{err}</p>}
