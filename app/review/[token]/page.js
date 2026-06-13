@@ -9,19 +9,24 @@ export default function Review() {
   const [domain, setDomain] = useState('');
   const [busy, setBusy] = useState('');
   const [paidParam, setPaidParam] = useState(false);
+  const [justApproved, setJustApproved] = useState(false);
 
-  const load = () => fetch('/api/review/' + token).then(r => r.json()).then(setD, () => setErr('Could not load'));
+  // cache:'no-store' so mobile Safari never serves a stale review state.
+  const load = () => fetch('/api/review/' + token, { cache: 'no-store' }).then(r => r.json()).then(setD, () => setErr('Could not load'));
   useEffect(() => { load(); setPaidParam(new URLSearchParams(window.location.search).get('paid') === '1'); }, [token]);
 
   async function approve() {
     setErr(''); setBusy('approve');
-    const res = await fetch('/api/approve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
-    if (res.ok) {
-      await load();
-      setBusy('');
-      // Surface the payment step clearly.
-      setTimeout(() => { const el = document.getElementById('paycard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
-    } else { setBusy(''); setErr((await res.json()).error || 'Error'); }
+    try {
+      const res = await fetch('/api/approve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }), cache: 'no-store' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setErr(j.error || ('Could not approve (error ' + res.status + ')')); return; }
+      setJustApproved(true);           // flip the UI immediately, regardless of refetch timing
+      load();                           // refresh in the background
+      setTimeout(() => { const el = document.getElementById('paycard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 90);
+    } catch (e) {
+      setErr('Network error — please try again.');
+    } finally { setBusy(''); }
   }
   async function pay() {
     setBusy('pay');
@@ -65,7 +70,7 @@ export default function Review() {
                   <tbody>{d.dnsRecords.map((r, i) => <tr key={i}><td>{r.type}</td><td>{r.name}</td><td className="mono">{r.value}</td></tr>)}</tbody></table>
               )}
             </div>
-          ) : !d.approved ? (
+          ) : !(d.approved || justApproved) ? (
             <div className="card">
               <div className="big">Love it?</div>
               <p>Approve the design to continue. One flat price — <b>$499</b>, one time. No payment until you approve.</p>
