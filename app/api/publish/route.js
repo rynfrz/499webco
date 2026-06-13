@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { sql, initDb, getSettings } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { slugify } from '@/lib/projectModel';
+import { slugify, categoryLabel } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
 
@@ -18,10 +18,11 @@ export async function POST(req) {
     if (!project?.generatedHtml) return NextResponse.json({ error: 'Generate the site first' }, { status: 400 });
 
     const slug = slugify(project.business.name);
+    const category = categoryLabel(project.business.type);
     const ts = Date.now();
-    await sql`INSERT INTO previews (slug, business_name, html, published_at)
-              VALUES (${slug}, ${project.business.name}, ${project.generatedHtml}, ${ts})
-              ON CONFLICT (slug) DO UPDATE SET business_name = EXCLUDED.business_name, html = EXCLUDED.html, published_at = EXCLUDED.published_at`;
+    await sql`INSERT INTO previews (slug, business_name, html, published_at, category)
+              VALUES (${slug}, ${project.business.name}, ${project.generatedHtml}, ${ts}, ${category})
+              ON CONFLICT (slug) DO UPDATE SET business_name = EXCLUDED.business_name, html = EXCLUDED.html, published_at = EXCLUDED.published_at, category = EXCLUDED.category`;
 
     const settings = await getSettings();
     const base = settings.previewDomain ? `https://${settings.previewDomain}` : '';

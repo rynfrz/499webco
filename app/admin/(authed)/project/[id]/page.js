@@ -4,6 +4,63 @@ import { useParams } from 'next/navigation';
 import { BUSINESS_TYPES, makeDesignSeed } from '@/lib/promptBuilder';
 
 const ALL_PAGES = ['About Us', 'Contact Us', 'Services', 'Locations', 'Hours', 'Menu', 'Shop', 'Reviews', 'FAQ', 'Gallery'];
+
+// Extract a few dominant brand colors from a loaded logo image (client-side).
+function extractLogoColors(img) {
+  try {
+    const c = document.createElement('canvas');
+    const w = c.width = 64, h = c.height = Math.max(1, Math.round(64 * (img.height || 1) / (img.width || 1)));
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const buckets = {};
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a < 128) continue;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      if (max > 244 && min > 244) continue;     // skip near-white
+      if (max < 18) continue;                    // skip near-black
+      const key = (r >> 5) + ',' + (g >> 5) + ',' + (b >> 5);
+      const bk = buckets[key] || (buckets[key] = { n: 0, r: 0, g: 0, b: 0, sat: 0 });
+      bk.n++; bk.r += r; bk.g += g; bk.b += b; bk.sat += (max - min);
+    }
+    const hex = (r, g, b) => '#' + [r, g, b].map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
+    return Object.values(buckets)
+      .map(bk => ({ n: bk.n, sat: bk.sat / bk.n, r: bk.r / bk.n, g: bk.g / bk.n, b: bk.b / bk.n }))
+      .sort((a, b) => (b.n * (b.sat + 12)) - (a.n * (a.sat + 12)))
+      .slice(0, 4)
+      .map(v => hex(v.r, v.g, v.b));
+  } catch { return []; }
+}
+
+// Read a logo file → { dataUrl, colors }. Rasters are downscaled to ≤512px; SVGs kept as-is.
+function processLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('Please choose an image file'));
+    if (file.size > 4 * 1024 * 1024) return reject(new Error('Logo is too large (max 4MB)'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('Could not read that file'));
+    fr.onload = () => {
+      const original = fr.result;
+      const img = new Image();
+      img.onload = () => {
+        const colors = extractLogoColors(img);
+        let dataUrl = original;
+        if (file.type !== 'image/svg+xml') {
+          const maxDim = 512; let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+          const c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          dataUrl = c.toDataURL('image/png');
+        }
+        resolve({ dataUrl, colors });
+      };
+      img.onerror = () => reject(new Error('That file is not a valid image'));
+      img.src = original;
+    };
+    fr.readAsDataURL(file);
+  });
+}
 const INTEGRATIONS = [
   { key: 'shopify', name: 'Shopify', desc: 'Link/embed their store', fields: [['url', 'Store URL'], ['token', 'Storefront token (optional)']] },
   { key: 'stripe', name: 'Stripe', desc: 'Payment link CTA', fields: [['url', 'Payment link URL']] },
@@ -204,6 +261,48 @@ function Brief({ p, update, toast, go }) {
             </div>
           );
         })}
+      </div>
+
+      <div className="card">
+        <div className="card-title">Brand logo (optional)</div>
+        <div className="hint" style={{ marginBottom: 12 }}>Used as the site's header logo and favicon, and its colors steer the palette. PNG, SVG, or JPG.</div>
+        {p.business.logo ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid var(--border)' }}>
+              <img src={p.business.logo} alt="logo" style={{ height: 56, width: 'auto', maxWidth: 200, display: 'block' }} />
+            </div>
+            {p.business.logoColors?.length > 0 && (
+              <div>
+                <div className="small muted" style={{ marginBottom: 6 }}>Detected brand colors (feed the palette):</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {p.business.logoColors.map((c, i) => (
+                    <span key={i} title={c} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: '1px solid var(--border)' }} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <button className="btn ghost small danger" onClick={() => update(np => { np.business.logo = ''; np.business.logoColors = []; })}>Remove</button>
+          </div>
+        ) : (
+          <label className="btn">📁 Upload logo
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+              const file = e.target.files?.[0]; if (!file) return;
+              try {
+                const { dataUrl, colors } = await processLogo(file);
+                update(np => { np.business.logo = dataUrl; np.business.logoColors = colors; });
+                toast('Logo added — it\'ll appear in the header & favicon', 'success');
+              } catch (err) { toast(err.message, 'error'); }
+              e.target.value = '';
+            }} />
+          </label>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card-title">Design direction (optional)</div>
+        <div className="hint" style={{ marginBottom: 10 }}>Free-form notes that go straight into the AI prompt at high priority. Reference sites, layout ideas, brand personality, specific sections, do's and don'ts — anything.</div>
+        <textarea rows={6} value={q.designNotes || ''} onChange={e => update(np => { np.questionnaire.designNotes = e.target.value; })}
+          placeholder={'e.g. "Make it feel premium and minimal like an Apple product page. Big full-width food photos, lots of negative space, a sticky Order Online button. Avoid anything cartoonish. Emphasize that they\'re family-owned since 1998."'} />
       </div>
 
       <div className="card">

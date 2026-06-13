@@ -7,6 +7,7 @@ import { requireUser, newId } from '@/lib/auth';
 import { streamMessage, extractHtml } from '@/lib/anthropic';
 import { WEBSITE_SYSTEM_PROMPT, buildWebsitePrompt } from '@/lib/promptBuilder';
 import { makeDemoSite } from '@/lib/demoSite';
+import { injectLogo } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -49,6 +50,8 @@ export async function POST(req) {
           if (!/<html/i.test(html)) throw new Error('Model did not return a complete HTML document — try again.');
         }
 
+        // Swap the {{LOGO_SRC}} token for the real logo data URL (or strip it).
+        html = injectLogo(html, project.business.logo);
         project.generatedHtml = html;
         project.status = 'generated';
         await sql`UPDATE projects SET data = ${JSON.stringify(project)}::jsonb, updated_at = ${Date.now()} WHERE id = ${projectId}`;
