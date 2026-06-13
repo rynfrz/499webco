@@ -24,15 +24,20 @@ export default function Setup() {
     if (f.password !== f.confirm) return setErr('Passwords do not match');
     if (f.password.length < 8) return setErr('Password must be at least 8 characters');
     setBusy(true);
-    const res = await fetch('/api/auth/setup', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(f)
-    });
-    const d = await res.json();
-    setBusy(false);
-    if (!res.ok) return setErr(d.error || 'Setup failed');
-    router.replace('/admin');
+    try {
+      const res = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(f)
+      });
+      const d = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+      if (!res.ok) { setErr(d.error || 'Setup failed'); return; }
+      router.replace('/admin');
+    } catch (err) {
+      setErr('Could not reach the server: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (allowed === null) return <div className="auth-wrap"><span className="spinner" /></div>;

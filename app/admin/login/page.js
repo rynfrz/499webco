@@ -17,13 +17,18 @@ function LoginForm() {
   async function submit(e) {
     e.preventDefault();
     setErr(''); setBusy(true);
-    const res = await fetch('/api/auth/login', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(f)
-    });
-    const d = await res.json();
-    setBusy(false);
-    if (!res.ok) return setErr(d.error || 'Login failed');
-    router.replace(params.get('next') || '/admin');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(f)
+      });
+      const d = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+      if (!res.ok) { setErr(d.error || 'Login failed'); return; }
+      router.replace(params.get('next') || '/admin');
+    } catch (err) {
+      setErr('Could not reach the server: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
