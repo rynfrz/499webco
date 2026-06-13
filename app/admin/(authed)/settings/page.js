@@ -8,13 +8,13 @@ export default function Settings() {
 
   useEffect(() => { fetch('/api/settings').then(r => r.json()).then(d => setS(d.settings || {})); }, []);
   if (!s) return <div className="inner"><span className="spinner" /></div>;
-  const set = k => e => setS({ ...s, [k]: e.target.value });
+  const set = (k, isNum) => e => setS({ ...s, [k]: isNum ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value });
   const field = (label, k, opts = {}) => (
     <div className="field">
       <label>{label}</label>
       {opts.select
         ? <select value={s[k] || ''} onChange={set(k)}>{opts.select.map(o => <option key={o} value={o}>{o}</option>)}</select>
-        : <input type={opts.type || 'text'} value={s[k] || ''} onChange={set(k)} placeholder={opts.placeholder || ''} />}
+        : <input type={opts.type || 'text'} value={s[k] ?? ''} onChange={set(k, opts.type === 'number')} placeholder={opts.placeholder || ''} />}
       {opts.hint && <div className="hint">{opts.hint}</div>}
     </div>
   );
