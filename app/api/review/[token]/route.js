@@ -2,6 +2,7 @@
 // Never exposes internal data — just what the review page needs.
 import { NextResponse } from 'next/server';
 import { projectByToken } from '@/lib/db';
+import { projectHasSite } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,7 @@ export async function GET(req, { params }) {
     businessName: p.business?.name || '',
     city: p.business?.city || '',
     status: p.status,
-    hasSite: !!p.generatedHtml,
+    hasSite: projectHasSite(p),
     previewUrl: p.publish?.directUrl || (p.publish?.slug ? `/preview/${p.publish.slug}/` : null),
     approved: ['approved', 'paid', 'launched'].includes(p.status) || !!p.approvedAt,
     paid: ['paid', 'launched'].includes(p.status) || !!p.payment?.paidAt,

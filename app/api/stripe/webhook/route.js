@@ -3,9 +3,11 @@
 // DNS instructions + notifies the team. Kept fast (no deploy here) so Stripe
 // never times out — the team finalizes the live launch from the admin tool.
 import { NextResponse } from 'next/server';
-import { getSettings, getProject, putProject } from '@/lib/db';
+import { getSettings, getProject, patchProject } from '@/lib/db';
 import { verifyWebhook } from '@/lib/stripe';
 import { paymentInstructions, teamPaidNotice } from '@/lib/email';
+import { inviteAfterPurchase } from '@/lib/customers';
+import { platformOrigin } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -43,10 +45,13 @@ export async function POST(req) {
           email: session.customer_details?.email || p.business.email
         };
         p.status = 'paid';
-        await putProject(p);
+        await patchProject(p.id, { payment: p.payment, status: 'paid' });
         const records = domain ? standardRecords(domain) : null;
         paymentInstructions(p.payment.email, p.business.name, domain, records).catch(() => {});
         if (s.teamNotifyEmail) teamPaidNotice(s.teamNotifyEmail, p.business.name, session.amount_total).catch(() => {});
+        // The purchase comes with an account: invite the customer to their dashboard.
+        // (Best-effort and time-boxed so the webhook always answers Stripe promptly.)
+        await Promise.race([inviteAfterPurchase(p.id, await platformOrigin(req)), new Promise(r => setTimeout(r, 6000))]);
       }
     }
   }

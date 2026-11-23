@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import AiSettings from '@/components/AiSettings';
 
 export default function Settings() {
   const [s, setS] = useState(null);
@@ -30,14 +31,7 @@ export default function Settings() {
       <h1>Settings</h1>
       <p className="subtitle">Admin only. Secrets are stored server-side and never sent back to the browser.</p>
 
-      <div className="card">
-        <div className="card-title">✦ AI engine (Claude)</div>
-        {field('Anthropic API key', 'anthropicKey', { type: 'password', placeholder: 'sk-ant-…', hint: 'console.anthropic.com → API Keys. Leave blank for demo mode.' })}
-        <div className="row">
-          {field('Model', 'model', { select: ['claude-sonnet-4-6', 'claude-opus-4-8', 'claude-haiku-4-5-20251001'] })}
-          {field('Max output tokens', 'maxTokens', { type: 'number', placeholder: '32000' })}
-        </div>
-      </div>
+      <AiSettings settings={s} setSettings={setS} toast={toast} />
 
       <div className="card">
         <div className="card-title">🌐 Previews & hosting</div>

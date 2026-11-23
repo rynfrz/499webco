@@ -4,17 +4,29 @@ import { requireUser } from '@/lib/auth';
 import { launchSite } from '@/lib/deploy';
 import { slugify } from '@/lib/projectModel';
 import { siteLive } from '@/lib/email';
+import { getSiteByProject } from '@/lib/site/store';
+import { deployLive } from '@/lib/site/publish';
+import { isLegacyDoc } from '@/lib/site/schema';
+import { platformOrigin } from '@/lib/http';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 export async function POST(req) {
   try {
-    await requireUser();
+    const user = await requireUser();
     await initDb();
     const { projectId, domain } = await req.json();
     const rows = await sql`SELECT data FROM projects WHERE id = ${projectId}`;
     const project = rows[0]?.data;
+    // Platform 2.0 site: deploy every page of the published version.
+    const site = project ? await getSiteByProject(project.id) : null;
+    if (site && !isLegacyDoc(site.draft) && (site.draft?.pages || []).length) {
+      if (!site.publishedVersionId) return NextResponse.json({ error: 'Publish the preview first, then launch.' }, { status: 400 });
+      const launch = await deployLive(site.id, { domain: domain || '', actorId: user.id, origin: await platformOrigin(req) });
+      if (project.business.email) siteLive(project.business.email, project.business.name, launch.liveUrl, domain || launch.domain || '', launch.records || null).catch(() => {});
+      return NextResponse.json({ launch });
+    }
     if (!project?.generatedHtml) return NextResponse.json({ error: 'Generate the site first' }, { status: 400 });
 
     const settings = await getSettings();

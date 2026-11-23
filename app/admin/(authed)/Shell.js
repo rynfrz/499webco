@@ -10,6 +10,11 @@ export default function Shell({ user, children }) {
   const nav = [
     { href: '/admin', label: '🏠 Dashboard' },
     { href: '/admin/new', label: '✦ New Business' },
+    { href: '/admin/sites', label: '🌐 Websites' },
+    { href: '/admin/jobs', label: '⚙︎ Generation' },
+    { href: '/admin/design', label: '🎨 Design' },
+    { href: '/admin/integrations', label: '🧩 Integrations' },
+    { href: '/admin/support', label: '💬 Support' },
     isAdmin && { href: '/admin/users', label: '👥 Users' },
     isAdmin && { href: '/admin/settings', label: '⚙ Settings' },
     { href: '/admin/account', label: '🙋 My Account' }
@@ -19,6 +24,8 @@ export default function Shell({ user, children }) {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.replace('/admin/login');
   }
+
+  if (/^\/admin\/site\/[^/]+\/edit/.test(path)) return children;
 
   return (
     <div className="shell">

@@ -4,7 +4,7 @@
 // saved and appears when they reopen the project. /api/jobs/[id] allows polling.
 import { sql, initDb, getSettings } from '@/lib/db';
 import { requireUser, newId } from '@/lib/auth';
-import { streamMessage, extractHtml } from '@/lib/anthropic';
+import { callModel, extractHtml } from '@/lib/anthropic';
 import { WEBSITE_SYSTEM_PROMPT, buildWebsitePrompt } from '@/lib/promptBuilder';
 import { makeDemoSite } from '@/lib/demoSite';
 import { injectLogo } from '@/lib/projectModel';
@@ -42,11 +42,14 @@ export async function POST(req) {
           html = makeDemoSite(project);
         } else {
           let chars = 0;
-          html = await streamMessage(
-            { apiKey: settings.anthropicKey, model: settings.model || 'claude-sonnet-4-6', system: WEBSITE_SYSTEM_PROMPT, prompt: buildWebsitePrompt(project), maxTokens: settings.maxTokens || 32000, temperature: 1 },
-            chunk => { chars += chunk.length; send(controller, { type: 'progress', kb: +(chars / 1024).toFixed(1) }); }
-          );
-          html = extractHtml(html);
+          // Classic single-page build: the configured default model, up to the output ceiling.
+          const r = await callModel({
+            settings, task: 'utility', override: settings.model ? { model: settings.model } : null,
+            system: WEBSITE_SYSTEM_PROMPT, prompt: buildWebsitePrompt(project), projectId, jobId, deadlineMs: 285000,
+            onText: chunk => { chars += chunk.length; send(controller, { type: 'progress', kb: +(chars / 1024).toFixed(1) }); }
+          });
+          if (r.truncated) throw new Error('The site was cut off at the output limit. Raise "Max output tokens" in Settings or use the multipage builder.');
+          html = extractHtml(r.text);
           if (!/<html/i.test(html)) throw new Error('Model did not return a complete HTML document — try again.');
         }
 

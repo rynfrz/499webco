@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic';
 export default async function AuthedLayout({ children }) {
   const user = await currentUser();
   if (!user) redirect('/admin/login');
+  // Customer accounts share the sign-in system but never see the studio.
+  if (user.role === 'customer') redirect('/dashboard');
 
   // License gate (no-op until a public key is set in lib/license.js).
   const lic = licenseStatus(process.env.LICENSE_KEY, headers().get('host'));

@@ -1,6 +1,7 @@
 // Public: the client approves the design (by review token). Records approval.
 import { NextResponse } from 'next/server';
-import { projectByToken, putProject } from '@/lib/db';
+import { projectByToken, patchProject } from '@/lib/db';
+import { projectHasSite } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
 
@@ -9,11 +10,10 @@ export async function POST(req) {
     const { token } = await req.json();
     const p = await projectByToken(token);
     if (!p) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    if (!p.generatedHtml) return NextResponse.json({ error: 'Site is not ready to approve yet' }, { status: 400 });
+    if (!projectHasSite(p)) return NextResponse.json({ error: 'Site is not ready to approve yet' }, { status: 400 });
     if (!['paid', 'launched'].includes(p.status)) {
-      p.approvedAt = Date.now();
-      p.status = 'approved';
-      await putProject(p);
+      // Merge only these keys so a concurrent edit elsewhere is not overwritten.
+      await patchProject(p.id, { approvedAt: Date.now(), status: 'approved' });
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

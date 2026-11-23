@@ -1,17 +1,23 @@
-// Gate everything under /admin behind a session cookie.
-// We only check presence/validity of the JWT here (Edge runtime);
-// role checks and DB lookups happen in the route handlers/pages.
+// Gate the studio (/admin), the customer area (/dashboard) and every API route
+// behind a session cookie. We only check presence/validity of the JWT here
+// (Edge runtime); role and ownership checks happen in the route handlers.
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
 const PUBLIC_PATHS = ['/admin/login', '/admin/setup'];
 
+// Open by design: sign-in, the lead form, the client review/pay flow, the Stripe
+// webhook, public website forms + page-view beacons from customer sites,
+// customer invite/reset links, OAuth callbacks, and the scheduled job runner
+// (which checks its own secret).
+const PUBLIC_API = [
+  '/api/auth/', '/api/lead', '/api/review/', '/api/approve', '/api/checkout', '/api/stripe/',
+  '/api/forms/', '/api/t/', '/api/customer/invite', '/api/customer/reset', '/api/integrations/oauth/callback', '/api/cron/'
+];
+
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
 
-  // Public auth pages + the public funnel APIs (lead form, client review/pay,
-  // Stripe webhook) are open. Everything else under /admin and /api is gated.
-  const PUBLIC_API = ['/api/auth/', '/api/lead', '/api/review/', '/api/approve', '/api/checkout', '/api/stripe/'];
   if (
     PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/')) ||
     PUBLIC_API.some(p => pathname === p || pathname.startsWith(p))
@@ -33,7 +39,9 @@ export async function middleware(req) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
     const url = req.nextUrl.clone();
-    url.pathname = '/admin/login';
+    // Customers sign in on their own page; the studio keeps its own.
+    url.pathname = pathname.startsWith('/dashboard') ? '/login' : '/admin/login';
+    url.search = '';
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
@@ -41,6 +49,5 @@ export async function middleware(req) {
 }
 
 export const config = {
-  // Protect the admin UI and all app APIs (auth APIs are whitelisted above).
-  matcher: ['/admin/:path*', '/api/:path*']
+  matcher: ['/admin/:path*', '/dashboard/:path*', '/api/:path*']
 };

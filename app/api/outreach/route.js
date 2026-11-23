@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, initDb, getSettings } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { message, extractJsonLoose } from '@/lib/anthropic';
+import { callModel, extractJsonLoose } from '@/lib/anthropic';
 import { buildOutreachPrompt } from '@/lib/promptBuilder';
 
 export const runtime = 'nodejs';
@@ -20,8 +20,8 @@ export async function POST(req) {
 
     let outreach;
     if (s.anthropicKey) {
-      const raw = await message({ apiKey: s.anthropicKey, model: s.model || 'claude-sonnet-4-6', system: 'You write short, human cold emails. Output only valid JSON.', prompt: buildOutreachPrompt(project, sender), maxTokens: 800, temperature: 0.8 });
-      outreach = extractJsonLoose(raw);
+      const r = await callModel({ settings: s, task: 'utility', system: 'You write short, human cold emails. Output only valid JSON.', prompt: buildOutreachPrompt(project, sender), maxTokens: 800, projectId, deadlineMs: 50000 });
+      outreach = extractJsonLoose(r.text);
     } else {
       outreach = {
         subject: `I rebuilt ${project.business.name}'s website (free preview inside)`,

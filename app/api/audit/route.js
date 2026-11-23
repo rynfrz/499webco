@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { sql, initDb, getSettings } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { message } from '@/lib/anthropic';
+import { callModel } from '@/lib/anthropic';
 import { buildAuditPrompt } from '@/lib/promptBuilder';
 
 export const runtime = 'nodejs';
@@ -21,7 +21,7 @@ export async function POST(req) {
     const project = rows[0]?.data;
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-    let html = await message({ apiKey: s.anthropicKey, model: s.model || 'claude-sonnet-4-6', system: 'You design clean one-page print documents as HTML. Output only HTML.', prompt: buildAuditPrompt(project), maxTokens: 6000, temperature: 0.5 });
+    let html = (await callModel({ settings: s, task: 'utility', system: 'You design clean one-page print documents as HTML. Output only HTML.', prompt: buildAuditPrompt(project), maxTokens: 6000, projectId, deadlineMs: 50000 })).text;
     html = html.trim();
     const fence = html.match(/```(?:html)?\s*([\s\S]*?)```/);
     if (fence) html = fence[1].trim();

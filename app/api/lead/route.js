@@ -7,12 +7,16 @@ import { sql, initDb, getSettings } from '@/lib/db';
 import { blankProject } from '@/lib/projectModel';
 import { newId } from '@/lib/auth';
 import { prospectConfirmation, teamLeadNotice } from '@/lib/email';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 
 export async function POST(req) {
   try {
     await initDb();
+    // A public form: a generous per-visitor limit keeps it from being flooded.
+    try { await rateLimit(`lead:${clientIp(req)}`, 10, 3600); }
+    catch { return NextResponse.json({ error: 'Too many requests. Please try again later or call us.' }, { status: 429 }); }
     const f = await req.json();
     if (!f.name || !f.email) return NextResponse.json({ error: 'Business name and email are required' }, { status: 400 });
 

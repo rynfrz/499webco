@@ -7,17 +7,27 @@ import { sql, initDb, getSettings } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { slugify, categoryLabel } from '@/lib/projectModel';
 import { previewReady } from '@/lib/email';
+import { getSiteByProject } from '@/lib/site/store';
+import { publishAndSync } from '@/lib/site/publish';
+import { isLegacyDoc } from '@/lib/site/schema';
+import { platformOrigin } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
 export async function POST(req) {
   try {
-    await requireUser();
+    const user = await requireUser();
     await initDb();
     const body = await req.json();
     const { projectId } = body;
     const rows = await sql`SELECT data FROM projects WHERE id = ${projectId}`;
     const project = rows[0]?.data;
+    // Platform 2.0 site: publish through versions (atomic switch, rollback, multi-page).
+    const site = project ? await getSiteByProject(project.id) : null;
+    if (site && !isLegacyDoc(site.draft) && (site.draft?.pages || []).length) {
+      const out = await publishAndSync(site.id, { actor: user, role: 'staff', origin: await platformOrigin(req), notify: !!body.notify });
+      return NextResponse.json({ publish: out.publish, reviewUrl: out.reviewUrl, emailed: out.emailed, versionId: out.versionId, pages: out.pages.length, live: out.live });
+    }
     if (!project?.generatedHtml) return NextResponse.json({ error: 'Generate the site first' }, { status: 400 });
 
     if (!project.reviewToken) project.reviewToken = crypto.randomBytes(16).toString('hex');

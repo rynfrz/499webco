@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { sql, initDb } from '@/lib/db';
 import { requireUser, newId } from '@/lib/auth';
-import { blankProject } from '@/lib/projectModel';
+import { blankProject, projectHasSite } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +17,9 @@ export async function GET() {
       return {
         id: d.id, status: d.status,
         business: { name: d.business?.name, type: d.business?.type, city: d.business?.city },
-        hasSite: !!d.generatedHtml, published: !!d.publish, launched: !!d.launch,
+        hasSite: projectHasSite(d), engine: d.siteEngine === 'v2' ? 'v2' : (d.generatedHtml ? 'classic' : null), siteId: d.siteId || null,
+        published: !!d.publish, launched: !!d.launch, customer: d.customer?.userId ? (d.customer.acceptedAt ? 'active' : 'invited') : null,
+        lead: d.lead ? { submittedAt: d.lead.submittedAt } : null,
         updated_at: Number(r.updated_at)
       };
     });

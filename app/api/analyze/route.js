@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSettings } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { message, extractJsonLoose } from '@/lib/anthropic';
+import { callModel, extractJsonLoose } from '@/lib/anthropic';
 import { buildAnalysisPrompt } from '@/lib/promptBuilder';
 
 export const runtime = 'nodejs';
@@ -43,8 +43,8 @@ export async function POST(req) {
     const s = await getSettings();
     let analysis;
     if (s.anthropicKey) {
-      const raw = await message({ apiKey: s.anthropicKey, model: s.model || 'claude-sonnet-4-6', system: 'You are a sharp website auditor. Output only valid JSON.', prompt: buildAnalysisPrompt(business, fetched), maxTokens: 2000, temperature: 0.3 });
-      analysis = extractJsonLoose(raw);
+      const r = await callModel({ settings: s, task: 'utility', system: 'You are a sharp website auditor. Output only valid JSON.', prompt: buildAnalysisPrompt(business, fetched), maxTokens: 2000, deadlineMs: 50000 });
+      analysis = extractJsonLoose(r.text);
     } else {
       analysis = heuristic(fetched);
     }

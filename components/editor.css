@@ -1,0 +1,90 @@
+/* Visual editor shell. Self-contained (does not depend on the studio or
+   dashboard themes) so it looks the same for staff and customers. */
+.wed{--e-bg:#eef0f4;--e-panel:#fff;--e-line:#dfe3ea;--e-text:#1b2230;--e-muted:#667085;--e-accent:#2563eb;--e-accent-ink:#fff;--e-danger:#c2362b;--e-ok:#18794e;
+  position:fixed;inset:0;display:flex;flex-direction:column;background:var(--e-bg);color:var(--e-text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;z-index:20}
+.wed *{box-sizing:border-box}
+.wed-top{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--e-panel);border-bottom:1px solid var(--e-line);flex-wrap:wrap}
+.wed-back{color:var(--e-muted);text-decoration:none;font-weight:600;font-size:13px;padding:6px 8px;border-radius:8px}
+.wed-back:hover{background:var(--e-bg);color:var(--e-text)}
+.wed-pages{max-width:230px}
+.wed select,.wed-input{font:inherit;color:var(--e-text);background:#fff;border:1px solid var(--e-line);border-radius:8px;padding:7px 10px;width:100%;outline:none}
+.wed-top select{width:auto}
+.wed select:focus,.wed-input:focus{border-color:var(--e-accent);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.wed-input.mono{font:12.5px/1.5 ui-monospace,Menlo,monospace;white-space:pre}
+textarea.wed-input{resize:vertical;min-height:70px}
+.wed-btn{font:600 13px/1 inherit;font-family:inherit;color:var(--e-text);background:#fff;border:1px solid var(--e-line);border-radius:8px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.wed-btn:hover{border-color:#b8c0cc;background:#f8f9fb}
+.wed-btn.primary{background:var(--e-accent);border-color:var(--e-accent);color:var(--e-accent-ink)}
+.wed-btn.primary:hover{background:#1d4fd7}
+.wed-btn.danger{color:var(--e-danger)}
+.wed-btn:disabled,.wed-btn[disabled]{opacity:.5;pointer-events:none}
+.wed-seg{display:inline-flex;border:1px solid var(--e-line);border-radius:8px;overflow:hidden;background:#fff}
+.wed-seg.wrap{flex-wrap:wrap}
+.wed-seg button{font:600 12.5px/1 inherit;font-family:inherit;border:0;background:transparent;color:var(--e-muted);padding:8px 11px;cursor:pointer}
+.wed-seg button+button{border-left:1px solid var(--e-line)}
+.wed-seg button.on{background:var(--e-text);color:#fff}
+.wed-save{margin-left:auto;font-size:12.5px;color:var(--e-muted);padding:0 4px;white-space:nowrap}
+.wed-save.saved::before{content:"✓ ";color:var(--e-ok)}
+.wed-save.error,.wed-save.conflict{color:var(--e-danger);font-weight:600}
+.wed-banner{background:#fff4e5;border-bottom:1px solid #f3d7a8;color:#6b4a0f;padding:9px 14px;font-size:13px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.wed-banner.info{background:#eaf2ff;border-color:#c9dcff;color:#1e3a6e}
+.wed-stage{flex:1;min-height:0;display:flex;justify-content:center;padding:14px;position:relative;overflow:auto}
+.wed-frame{height:100%;max-width:100%;background:#fff;border:1px solid var(--e-line);border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(16,24,40,.08);position:relative;transition:width .2s}
+.wed-frame iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+.wed-veil{position:absolute;inset:0;background:rgba(255,255,255,.55);display:grid;place-items:center}
+.wed-tip{position:absolute;left:24px;bottom:24px;background:#111827;color:#e7eaf0;border-radius:12px;padding:12px 14px;display:grid;gap:3px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:240px;pointer-events:none;opacity:.92}
+.wed-tip b{font-size:13px;color:#fff;margin-bottom:2px}
+@media (max-width:900px){.wed-tip{display:none}}
+.wed-inspector{position:absolute;right:20px;top:20px;width:330px;max-width:calc(100% - 40px);max-height:calc(100% - 40px);overflow:auto;background:var(--e-panel);border:1px solid var(--e-line);border-radius:12px;padding:14px;box-shadow:0 14px 40px rgba(16,24,40,.18);z-index:5}
+.wed-ins-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.wed-x{border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:var(--e-muted);padding:0 4px}
+.wed-label{display:block;font-size:12.5px;font-weight:600;color:var(--e-muted);margin:10px 0 5px}
+.wed-count{font-weight:400;float:right}
+.wed-hint{font-size:12.5px;color:var(--e-muted);margin:6px 0 10px;line-height:1.5}
+.wed-h3{font-size:14px;margin:18px 0 0}
+.wed-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.wed-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+.wed-row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+@media (max-width:640px){.wed-row{grid-template-columns:1fr}}
+.wed-check{display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px;cursor:pointer}
+.wed-check input{width:16px;height:16px}
+.wed-addr{display:flex;align-items:center;gap:6px}
+.wed-addr span{color:var(--e-muted);font-size:13px;white-space:nowrap}
+.wed-media{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px}
+.wed-thumb{padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:#f1f3f6}
+.wed-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.wed-thumb.on,.wed-thumb:hover{border-color:var(--e-accent)}
+.wed-modal-back{position:fixed;inset:0;background:rgba(15,23,42,.45);display:grid;place-items:center;padding:20px;z-index:60}
+.wed-modal{background:var(--e-panel);color:var(--e-text);border-radius:14px;width:100%;max-width:520px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.3)}
+.wed-modal.wide{max-width:760px}
+.wed-modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0}
+.wed-modal-head h2{font-size:17px;margin:0}
+.wed-modal-body{padding:8px 20px 20px;overflow:auto}
+.wed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.wed-tile{font:600 13px/1.3 inherit;font-family:inherit;text-align:left;padding:12px;border:1px solid var(--e-line);border-radius:10px;background:#fff;cursor:pointer;color:var(--e-text)}
+.wed-tile:hover,.wed-tile.on{border-color:var(--e-accent);background:#f2f6ff}
+.wed-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.wed-list li{display:flex;align-items:center;gap:8px;border:1px solid var(--e-line);border-radius:10px;padding:8px 10px;background:#fff;flex-wrap:wrap}
+.wed-list li.on{border-color:var(--e-accent)}
+.wed-pg{flex:1;min-width:140px;display:grid}
+.wed-pg span{font-size:12px;color:var(--e-muted)}
+.wed-ord{display:grid}
+.wed-ord button{border:0;background:transparent;cursor:pointer;color:var(--e-muted);font-size:10px;line-height:1.3;padding:0 4px}
+.wed-ord button:disabled{opacity:.25;cursor:default}
+.wed-details{margin-top:14px}
+.wed-details summary{cursor:pointer;font-weight:600;font-size:13px;margin-bottom:8px}
+.wed-log{list-style:none;margin:0;padding:0;font-size:12.5px;color:var(--e-muted);display:grid;gap:3px}
+.wed-color{display:flex;gap:6px;align-items:center}
+.wed-color input[type=color]{width:38px;height:34px;padding:0;border:1px solid var(--e-line);border-radius:8px;background:#fff;cursor:pointer}
+.wed-swatch{margin-top:14px;border-radius:999px;padding:12px 20px;font-weight:700;display:inline-block}
+.wed-progress{position:relative;height:30px;border-radius:8px;background:#eef1f6;overflow:hidden;margin-top:12px}
+.wed-progress i{position:absolute;inset:0 auto 0 0;background:#cfe0ff;transition:width .4s}
+.wed-progress span{position:relative;display:block;padding:6px 10px;font-size:12.5px;font-weight:600}
+.wed-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111827;color:#fff;padding:11px 16px;border-radius:10px;font-size:13.5px;box-shadow:0 12px 34px rgba(0,0,0,.3);z-index:80;max-width:min(560px,calc(100% - 30px))}
+.wed-toast.err{background:#8f1d14}
+.wed-center{position:fixed;inset:0;display:grid;place-items:center;background:#eef0f4;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1b2230;padding:20px;z-index:20}
+.wed-card{background:#fff;border:1px solid #dfe3ea;border-radius:14px;padding:28px;max-width:480px}
+.wed-card h2{margin:0 0 8px;font-size:19px}
+.wed-card p{color:#667085;line-height:1.55;margin:0 0 16px}
+.wed-spin{width:26px;height:26px;border-radius:50%;border:3px solid #dfe3ea;border-top-color:#2563eb;animation:wedspin .8s linear infinite}
+@keyframes wedspin{to{transform:rotate(360deg)}}

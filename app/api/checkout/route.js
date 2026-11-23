@@ -1,7 +1,8 @@
 // Public: create a Stripe Checkout session for an approved project (by token).
 // Optionally records the client's domain for the post-payment launch.
 import { NextResponse } from 'next/server';
-import { projectByToken, putProject, getSettings } from '@/lib/db';
+import { projectByToken, patchProject, getSettings } from '@/lib/db';
+import { projectHasSite } from '@/lib/projectModel';
 import { createCheckoutSession } from '@/lib/stripe';
 import { brand } from '@/lib/brand';
 
@@ -12,12 +13,12 @@ export async function POST(req) {
     const { token, domain } = await req.json();
     const p = await projectByToken(token);
     if (!p) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    if (!p.generatedHtml) return NextResponse.json({ error: 'Site not ready' }, { status: 400 });
+    if (!projectHasSite(p)) return NextResponse.json({ error: 'Site not ready' }, { status: 400 });
 
     const s = await getSettings();
     if (!s.stripeSecretKey) return NextResponse.json({ error: 'Payments are not configured yet. Please contact us.' }, { status: 500 });
 
-    if (domain) { p.payment = { ...(p.payment || {}), domain: String(domain).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '') }; await putProject(p); }
+    if (domain) { p.payment = { ...(p.payment || {}), domain: String(domain).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').slice(0, 120) }; await patchProject(p.id, { payment: p.payment }); }
 
     const origin = new URL(req.url).origin;
     const amount = Number(s.sitePriceCents) || brand.priceCents;

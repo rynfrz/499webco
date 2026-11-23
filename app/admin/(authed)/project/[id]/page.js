@@ -1,7 +1,12 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { BUSINESS_TYPES, makeDesignSeed } from '@/lib/promptBuilder';
+import { projectHasSite } from '@/lib/projectModel';
+import DirectionPanel from '@/components/DirectionPanel';
+import BuildPanel from '@/components/BuildPanel';
+import SitePanel from '@/components/SitePanel';
+import CustomerAccessCard from '@/components/CustomerAccessCard';
 
 const ALL_PAGES = ['About Us', 'Contact Us', 'Services', 'Locations', 'Hours', 'Menu', 'Shop', 'Reviews', 'FAQ', 'Gallery'];
 
@@ -96,12 +101,16 @@ const INTEGRATIONS = [
   { key: 'doordash', name: 'Online ordering', desc: 'DoorDash/Toast link', fields: [['url', 'Ordering URL']] },
   { key: 'googleBusiness', name: 'Google reviews', desc: '“Review us” CTA', fields: [['url', 'Review link (optional)']] }
 ];
-const STEPS = ['Business', 'Brief', 'Generate', 'Preview', 'Deliver', 'Launch'];
+const STEPS = ['Business', 'Brief', 'Generate', 'Website', 'Deliver', 'Launch'];
 
 export default function Workspace() {
   const { id } = useParams();
+  const search = useSearchParams();
   const [p, setP] = useState(null);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => Math.max(0, Math.min(5, parseInt(search.get('step') || '0', 10) || 0)));
+  const [hasKey, setHasKey] = useState(true);
+  useEffect(() => { fetch('/api/ai').then(r => r.json()).then(d => setHasKey(!!d.hasKey)).catch(() => {}); }, []);
+  const reload = () => fetch('/api/projects/' + id).then(r => r.json()).then(d => { if (d.project) setP(d.project); return d.project; });
   const [msg, setMsg] = useState(null);
   const saveTimer = useRef(null);
   const toast = (text, type = 'success') => { setMsg({ text, type }); setTimeout(() => setMsg(null), 4000); };
@@ -125,6 +134,7 @@ export default function Workspace() {
       <h1>{p.business.name || 'New Business'}</h1>
       <p className="subtitle">{p.business.type}{p.business.city ? ' · ' + p.business.city : ''}</p>
       <FunnelPanel p={p} update={update} toast={toast} />
+      <CustomerAccessCard project={p} toast={toast} onChanged={reload} />
       <div className="chips" style={{ marginBottom: 24 }}>
         {STEPS.map((s, i) => (
           <div key={s} className={'chip' + (step === i ? ' on' : '')} onClick={() => setStep(i)}>{i + 1}. {s}</div>
@@ -133,8 +143,8 @@ export default function Workspace() {
 
       {step === 0 && <Business p={p} update={update} toast={toast} go={() => setStep(1)} />}
       {step === 1 && <Brief p={p} update={update} toast={toast} go={() => setStep(2)} />}
-      {step === 2 && <Generate p={p} setP={setP} id={id} toast={toast} go={() => setStep(3)} />}
-      {step === 3 && <Preview p={p} setP={setP} id={id} toast={toast} go={() => setStep(4)} />}
+      {step === 2 && <Generate p={p} setP={setP} id={id} toast={toast} go={() => setStep(3)} reload={reload} hasKey={hasKey} />}
+      {step === 3 && <Website p={p} setP={setP} id={id} toast={toast} go={() => setStep(4)} reload={reload} hasKey={hasKey} />}
       {step === 4 && <Deliver p={p} setP={setP} id={id} toast={toast} go={() => setStep(5)} />}
       {step === 5 && <Launch p={p} setP={setP} id={id} toast={toast} />}
 
@@ -161,6 +171,7 @@ function FunnelPanel({ p, update, toast }) {
   const isLead = p.status === 'lead';
   const approved = ['approved', 'paid', 'launched'].includes(p.status) || !!p.approvedAt;
   const paid = ['paid', 'launched'].includes(p.status) || !!p.payment?.paidAt;
+  const hasSite = projectHasSite(p);
 
   const [sending, setSending] = useState(false);
 
@@ -199,7 +210,7 @@ function FunnelPanel({ p, update, toast }) {
     return (
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <div className="small muted">Ready to share with the client? Generate a private review &amp; pay link.</div>
-        <button className="btn" onClick={reviewLink} disabled={!p.generatedHtml}>🔗 Copy client review link</button>
+        <button className="btn" onClick={reviewLink} disabled={!hasSite}>🔗 Copy client review link</button>
       </div>
     );
   }
@@ -209,12 +220,12 @@ function FunnelPanel({ p, update, toast }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
           {isLead && <span className="badge lead">New lead</span>}
-          {pill(!!p.generatedHtml, 'Site built')}
+          {pill(hasSite, p.siteEngine === 'v2' ? 'Site built (multipage)' : 'Site built')}
           {pill(!!p.publish, 'Preview published')}
           {pill(approved, 'Approved')}
           {pill(paid, paid ? `Paid${p.payment?.amount ? ' $' + (p.payment.amount / 100).toFixed(0) : ''}` : 'Paid')}
         </div>
-        <button className="btn" onClick={reviewLink} disabled={!p.generatedHtml}>🔗 Copy client review link</button>
+        <button className="btn" onClick={reviewLink} disabled={!hasSite}>🔗 Copy client review link</button>
       </div>
       {link && <div className="small mono" style={{ marginTop: 10, color: 'var(--muted)', wordBreak: 'break-all' }}>{link}</div>}
       {p.publish && (
@@ -227,7 +238,7 @@ function FunnelPanel({ p, update, toast }) {
           </button>
         </div>
       )}
-      {!p.generatedHtml && <div className="hint" style={{ marginTop: 8 }}>Generate &amp; publish the site first — then the review link lets the client approve and pay.</div>}
+      {!hasSite && <div className="hint" style={{ marginTop: 8 }}>Generate &amp; publish the site first — then the review link lets the client approve and pay.</div>}
       {p.lead?.notes && (
         <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
           <div className="small muted" style={{ marginBottom: 4, fontWeight: 600 }}>What the prospect told us · {p.business.email || ''} {p.business.phone ? '· ' + p.business.phone : ''}</div>
@@ -463,8 +474,13 @@ function Brief({ p, update, toast, go }) {
 
       <PhotoLibrary p={p} update={update} toast={toast} />
 
+      <LeadDetails p={p} update={update} />
+
+      <DirectionPanel direction={p.direction} onChange={dir => update(np => { np.direction = dir; })}
+        ctx={{ businessType: p.business.type, hasPhotos: (p.business.photos || []).length > 0 }} toast={toast} />
+
       <div className="card">
-        <div className="card-title">Design direction (optional)</div>
+        <div className="card-title">Design notes for the classic builder (optional)</div>
         <div className="hint" style={{ marginBottom: 10 }}>Free-form notes that go straight into the AI prompt at high priority. Reference sites, layout ideas, brand personality, specific sections, do's and don'ts — anything.</div>
         <textarea rows={6} value={q.designNotes || ''} onChange={e => update(np => { np.questionnaire.designNotes = e.target.value; })}
           placeholder={'e.g. "Make it feel premium and minimal like an Apple product page. Big full-width food photos, lots of negative space, a sticky Order Online button. Avoid anything cartoonish. Emphasize that they\'re family-owned since 1998."'} />
@@ -483,8 +499,8 @@ function Brief({ p, update, toast, go }) {
       </div>
 
       <div className="card">
-        <div className="card-title">🎲 Art direction seed</div>
-        <div className="hint" style={{ marginBottom: 12 }}>Each generation gets a unique direction so no two sites look alike.</div>
+        <div className="card-title">🎲 Art direction seed (classic single-page builder)</div>
+        <div className="hint" style={{ marginBottom: 12 }}>Only used by the classic one-page builder. Multipage sites use the Design direction above.</div>
         <ul className="small">
           <li>🎨 {seed.direction}</li>
           <li>🔤 {seed.type.head} / {seed.type.body}</li>
@@ -501,8 +517,37 @@ function Brief({ p, update, toast, go }) {
   );
 }
 
+/* ---------- Lead details (structured brief fields) ---------- */
+function LeadDetails({ p, update }) {
+  const b = p.briefInput || {};
+  const set = (k, v) => update(np => { np.briefInput = { ...(np.briefInput || {}), [k]: v }; });
+  return (
+    <div className="card">
+      <div className="card-title">Lead details</div>
+      <div className="row3">
+        <div className="field"><label>Website package</label>
+          <select value={b.package || ''} onChange={e => set('package', e.target.value)}>
+            <option value="">Not set</option><option>Starter</option><option>Professional</option><option>Growth</option>
+          </select></div>
+        <div className="field"><label>Desired page count</label>
+          <input type="number" min="1" max="20" value={b.desiredPageCount || ''} onChange={e => set('desiredPageCount', e.target.value === '' ? '' : Number(e.target.value))} placeholder="Let the plan decide" /></div>
+        <div className="field"><label>Main conversion goal</label>
+          <input value={b.conversionGoal || ''} onChange={e => set('conversionGoal', e.target.value)} placeholder="e.g. phone calls, quote requests" /></div>
+      </div>
+      <div className="row">
+        <Field label="Target audience" value={b.targetAudience} onChange={v => set('targetAudience', v)} placeholder="Who the site must persuade" />
+        <Field label="Service area" value={b.serviceArea} onChange={v => set('serviceArea', v)} placeholder="Towns or neighbourhoods served" />
+      </div>
+      <Field label="Site goals" value={b.goals} onChange={v => set('goals', v)} textarea={2} placeholder="What the website should achieve for the business" />
+      <Field label="Differentiators (one per line)" value={b.differentiators} onChange={v => set('differentiators', v)} textarea={3} placeholder="Only things the business can back up" hint="Used as facts. Nothing is invented beyond what is entered here." />
+      <Field label="Brand assets & other instructions" value={b.instructions} onChange={v => set('instructions', v)} textarea={2} placeholder="Notes on logo usage, photos, must-haves" />
+      <div className="small muted">Generation status: <b>{p.siteEngine === 'v2' ? 'Multipage site built' : p.generatedHtml ? 'Classic site built' : 'Not generated'}</b> · Customer account: <b>{p.customer?.userId ? (p.customer.acceptedAt ? 'Active' : 'Invited') : 'None'}</b> · Requested integrations: <b>{Object.entries(p.questionnaire?.integrations || {}).filter(([, v]) => v?.enabled).map(([k]) => k).join(', ') || 'none'}</b></div>
+    </div>
+  );
+}
+
 /* ---------- Step 3: Generate ---------- */
-function Generate({ p, setP, id, toast, go }) {
+function Generate({ p, setP, id, toast, go, reload, hasKey }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
 
@@ -536,16 +581,74 @@ function Generate({ p, setP, id, toast, go }) {
     finally { setBusy(false); }
   }
 
+  const v2 = p.siteEngine === 'v2';
   return (
-    <div className="card">
-      <div className="card-title">Generate website</div>
-      <div className="hint" style={{ marginBottom: 14 }}>Claude builds a complete, one-of-a-kind site from your brief. This can take 1–4 minutes; the result is saved even if you navigate away.</div>
-      <div className="btn-row" style={{ margin: 0 }}>
-        <button className="btn primary" onClick={generate} disabled={busy}>{busy ? <><span className="spinner" /> Generating…</> : (p.generatedHtml ? '↻ Regenerate' : '✦ Generate Website')}</button>
-        {p.generatedHtml && !busy && <button className="btn" onClick={go}>View current site →</button>}
+    <>
+      <div className="card">
+        <div className="card-title">✦ Multipage website {v2 && <span className="badge v2" style={{ marginLeft: 8 }}>current</span>}</div>
+        <div className="hint" style={{ marginBottom: 14 }}>
+          A staged build: understand the business → plan the sitemap (you review it) → create one design system → build each page inside it → quality checks.
+          The result is a structured site the customer can edit visually. It keeps running if you close this tab; reopen the project to pick it up.
+        </div>
+        {!p.business.name
+          ? <div className="err">Add the business name in Step 1 first.</div>
+          : <BuildPanel project={p} toast={toast} hasKey={hasKey} startLabel={v2 ? '↻ Plan a new version' : '✦ Plan the website'}
+              onFinished={async () => { await reload(); toast('Website built. Review it, then publish.', 'success'); go(); }} />}
       </div>
-      {status && <pre className="mono small" style={{ marginTop: 14, whiteSpace: 'pre-wrap', color: 'var(--muted)' }}>{status}</pre>}
-    </div>
+
+      <details className="card" open={!v2 && !!p.generatedHtml}>
+        <summary className="card-title" style={{ cursor: 'pointer', margin: 0 }}>Classic single-page builder</summary>
+        <div className="hint" style={{ margin: '12px 0 14px' }}>The original one-call generator: one long page as a single HTML file. Still available; sites built this way can be upgraded later from the Website step.</div>
+        <div className="btn-row" style={{ margin: 0 }}>
+          <button className="btn" onClick={generate} disabled={busy}>{busy ? <><span className="spinner" /> Generating…</> : (p.generatedHtml ? '↻ Regenerate classic page' : 'Generate classic page')}</button>
+          {p.generatedHtml && !busy && <button className="btn ghost" onClick={go}>View current site →</button>}
+        </div>
+        {status && <pre className="mono small" style={{ marginTop: 14, whiteSpace: 'pre-wrap', color: 'var(--muted)' }}>{status}</pre>}
+      </details>
+    </>
+  );
+}
+
+/* ---------- Step 4: Website (structured sites, upgrades, versions) ---------- */
+function Website({ p, setP, id, toast, go, reload, hasKey }) {
+  const [siteId, setSiteId] = useState(p.siteId || null);
+  const [opening, setOpening] = useState(false);
+  useEffect(() => { if (p.siteId) setSiteId(p.siteId); }, [p.siteId]);
+
+  // A classic project gets a site record (and its "legacy" version) the first time it is needed.
+  async function openTools() {
+    setOpening(true);
+    try {
+      const res = await fetch('/api/sites', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId: id }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setSiteId(d.siteId);
+      await reload();
+    } catch (e) { toast(e.message, 'error'); } finally { setOpening(false); }
+  }
+
+  if (!projectHasSite(p)) return <div className="card">Generate the site first.</div>;
+
+  if (p.siteEngine === 'v2' && siteId) {
+    return (
+      <>
+        <SitePanel project={p} siteId={siteId} toast={toast} onProjectChanged={reload} hasKey={hasKey} />
+        <div className="btn-row"><button className="btn primary" onClick={go}>Continue → Deliver</button></div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Preview p={p} setP={setP} id={id} toast={toast} go={go} />
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="card-title">Upgrade, versions &amp; rollback</div>
+        <div className="hint" style={{ marginBottom: 12 }}>This is a classic single-page site. You can convert it to the editable format (keeps its look), refresh the design, expand it into a multipage site, or fully redesign it. Each upgrade is staged for review and can be rolled back.</div>
+        {!siteId
+          ? <button className="btn primary" onClick={openTools} disabled={opening}>{opening ? <span className="spinner" /> : 'Open upgrade tools'}</button>
+          : <SitePanel project={p} siteId={siteId} toast={toast} onProjectChanged={reload} hasKey={hasKey} />}
+      </div>
+    </>
   );
 }
 
@@ -592,7 +695,7 @@ function Deliver({ p, setP, id, toast, go }) {
   const [pubBusy, setPubBusy] = useState(false);
   const [mailBusy, setMailBusy] = useState(false);
   const [auditBusy, setAuditBusy] = useState(false);
-  if (!p.generatedHtml) return <div className="card">Generate the site first.</div>;
+  if (!projectHasSite(p)) return <div className="card">Generate the site first.</div>;
 
   async function publish() {
     setPubBusy(true);
@@ -600,8 +703,8 @@ function Deliver({ p, setP, id, toast, go }) {
       const res = await fetch('/api/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId: id }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
-      setP({ ...p, publish: d.publish, status: 'published' });
-      toast('Preview is live', 'success');
+      setP({ ...p, publish: d.publish, status: ['approved', 'paid', 'launched'].includes(p.status) ? p.status : 'published' });
+      toast(d.live && !d.live.ok ? d.live.error : (d.pages ? `Preview is live (${d.pages} pages)` : 'Preview is live'), d.live && !d.live.ok ? 'error' : 'success');
     } catch (e) { toast('Publish failed: ' + e.message, 'error'); } finally { setPubBusy(false); }
   }
   async function outreach() {
@@ -675,7 +778,7 @@ function Launch({ p, setP, id, toast }) {
   const [mode, setMode] = useState('existing');
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
-  if (!p.generatedHtml) return <div className="card">Generate the site first.</div>;
+  if (!projectHasSite(p)) return <div className="card">Generate the site first.</div>;
 
   async function launch() {
     const d = mode === 'existing' ? domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '') : null;

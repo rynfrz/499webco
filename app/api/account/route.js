@@ -2,13 +2,14 @@
 // current password. Role is intentionally NOT editable here.
 import { NextResponse } from 'next/server';
 import { sql, initDb } from '@/lib/db';
-import { requireUser, verifyPassword, hashPassword } from '@/lib/auth';
+import { requireSession, verifyPassword, hashPassword } from '@/lib/auth';
+import { validPassword } from '@/lib/customers';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
   try {
-    const u = await requireUser();
+    const u = await requireSession();
     return NextResponse.json({ user: u });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: e.status || 500 });
@@ -17,7 +18,7 @@ export async function GET() {
 
 export async function PATCH(req) {
   try {
-    const u = await requireUser();
+    const u = await requireSession();
     await initDb();
     const { fullName, email, username, currentPassword, newPassword } = await req.json();
 
@@ -32,6 +33,7 @@ export async function PATCH(req) {
 
     if (newPassword) {
       if (newPassword.length < 8) return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 });
+      if (u.role === 'customer') { const bad = validPassword(newPassword); if (bad) return NextResponse.json({ error: bad }, { status: 400 }); }
       const rows = await sql`SELECT password FROM users WHERE id = ${u.id}`;
       if (!(await verifyPassword(currentPassword || '', rows[0].password)))
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 403 });

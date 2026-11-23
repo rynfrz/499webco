@@ -54,7 +54,7 @@ export default function Dashboard() {
                 <h3 style={{ margin: '0 0 4px' }}>{p.business?.name || 'Untitled'}</h3>
                 <div className="small muted">{p.business?.type}{p.business?.city ? ' · ' + p.business.city : ''}</div>
                 <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className={'badge ' + st}>{labelOf[st]}</span>
+                  <span><span className={'badge ' + st}>{labelOf[st]}</span>{p.engine === 'v2' && <span className="badge v2" style={{ marginLeft: 6 }}>multipage</span>}{p.customer && <span className="badge info" style={{ marginLeft: 6 }}>{p.customer === 'active' ? 'customer active' : 'customer invited'}</span>}</span>
                   <button className="btn ghost small danger" style={{ padding: '3px 9px', fontSize: 12 }} onClick={e => del(p.id, p.business?.name, e)}>Delete</button>
                 </div>
               </Link>
