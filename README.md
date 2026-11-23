@@ -2,6 +2,8 @@
 
 The desktop pipeline, rebuilt as a multi-user web app: login, two roles (admin / designer), user management, account management, and the full Find → Build → Preview → Show → Launch flow — served from one Next.js app on Vercel with a Postgres database.
 
+> **Platform 2.0** adds multi-stage multipage generation, a model configuration system, a design direction engine, customer accounts with a visual editor, an integrations marketplace and safe upgrades of existing sites. See [docs/PLATFORM-2.0.md](docs/PLATFORM-2.0.md) for what is complete, what is not yet verified, and the decisions that are still the owner's; [docs/PLATFORM-2.0-AUDIT.md](docs/PLATFORM-2.0-AUDIT.md) for the starting point and plan.
+
 ## Architecture at a glance
 
 - **Next.js (App Router)** on Vercel. Pro plan assumed (generation runs up to 300s).
@@ -15,6 +17,7 @@ The desktop pipeline, rebuilt as a multi-user web app: login, two roles (admin /
 - **Admin** — everything, plus Settings (API keys, hosting, identity) and Users (add people, set role, reset passwords, delete).
 - **Designer** — runs the full pipeline (analyze, generate, preview, publish, audit, outreach, launch) but cannot see secrets or manage users.
 - **Everyone** — manages their own name, email, username, and password under My Account.
+- **Customer (owner / editor)** — signs in at `/login`, lands on `/dashboard`, and can edit, publish and connect integrations for their own site only. No access to anything under `/admin`.
 
 ## Deploy to 499web.co/admin
 
@@ -43,6 +46,8 @@ The desktop pipeline, rebuilt as a multi-user web app: login, two roles (admin /
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in DATABASE_URL + SESSION_SECRET
+cp .env.example .env.local   # works as is: an in-process Postgres, no production data
 npm run dev                  # http://localhost:3000/admin
+npm test                     # automated suite
+npm run build:check          # production build into .next-build (does not disturb a running dev server)
 ```
