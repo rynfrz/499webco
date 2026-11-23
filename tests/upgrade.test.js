@@ -216,8 +216,12 @@ describe('AI upgrades of an existing site', () => {
     expect(staged.doc.pages.map(p => p.slug)).toEqual(['', 'services', 'about', 'contact']);
     expect(staged.doc.meta.upgradedFrom).toBe('multipage');
     expect(staged.meta.upgradeType).toBe('multipage');
+    // the site panel is told about it while the site is still a classic single page
+    const model = (await (await siteGET(jsonReq('/x'), P(site.id))).json()).site;
+    expect(model).toMatchObject({ legacy: true, staged: true });
 
     await stagingPOST(jsonReq('/x', 'POST', { action: 'approve', publish: true }), P(site.id));
+    expect((await (await siteGET(jsonReq('/x'), P(site.id))).json()).site).toMatchObject({ legacy: false, staged: false, published: true });
     expect((await previewPathGET(jsonReq('/x'), { params: { slug: site.slug, path: ['services'] } })).status).toBe(200);
     expect((await getProject(project.id)).siteEngine).toBe('v2');
   });

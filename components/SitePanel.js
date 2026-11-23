@@ -296,6 +296,7 @@ export default function SitePanel({ project, siteId, toast, onProjectChanged, ha
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <a className="btn ghost small" style={{ padding: '4px 9px' }} href={`/api/sites/${siteId}/preview/${v.id}/`} target="_blank" rel="noopener">View</a>{' '}
                     <button className="btn ghost small" style={{ padding: '4px 9px' }} disabled={!!busy} onClick={() => versionAction('restore', v)}>Restore to draft</button>{' '}
+                    {v.id === versions.stagingVersionId && <button className="btn primary small" style={{ padding: '4px 9px' }} disabled={!!busy} onClick={() => stagingAction('approve', true)}>Approve &amp; publish</button>}
                     {v.kind !== 'staging' && v.id !== versions.publishedVersionId && <button className="btn ghost small" style={{ padding: '4px 9px' }} disabled={!!busy} onClick={() => versionAction('rollback', v)}>Roll back to this</button>}
                   </td>
                 </tr>))}</tbody>
