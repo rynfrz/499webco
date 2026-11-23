@@ -55,8 +55,12 @@ export function mockAnthropic(handler) {
     ];
     const text = r.text || '';
     for (let i = 0; i < text.length; i += 400) events.push({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: text.slice(i, i + 400) } });
-    events.push({ type: 'message_delta', delta: { stop_reason: r.stop || 'end_turn' }, usage: { output_tokens: usage.output_tokens } });
-    events.push({ type: 'message_stop' });
+    // `cutOff: 'timeout'` ends the stream early with an error, as when the request window closes mid-response.
+    if (r.cutOff) events.push({ type: 'error', error: { type: r.cutOff, message: 'cut off' } });
+    else {
+      events.push({ type: 'message_delta', delta: { stop_reason: r.stop || 'end_turn' }, usage: { output_tokens: usage.output_tokens } });
+      events.push({ type: 'message_stop' });
+    }
     const sse = events.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } });
   };

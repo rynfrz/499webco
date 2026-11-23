@@ -178,6 +178,51 @@ describe('site build — with the model', () => {
     expect(studio.seen.page).toBe(4);
   });
 
+  it('a page cut off by the request time limit keeps its finished sections and continues from them', async () => {
+    const project = await seedProject();
+    const full = pageOutput('Home', { sections: 4 });
+    const cut = full.indexOf('<w-section', full.indexOf('block 2') - 60);           // two finished sections, the third just begun
+    const prompts = [];
+    const studio = fakeStudio({ page: async (body, n, { u }) => {
+      if (!u.includes('Build the "Home" page')) return undefined;
+      prompts.push(u);
+      if (prompts.length === 1) return { text: full.slice(0, cut) + '<w-section type="content" name="Half', cutOff: 'timeout' };
+      return full.slice(cut);                                                        // the remaining sections, CSS and SEO
+    } });
+    const job = await startSiteBuild(project, { autoApprove: true }, null);
+    const v = await runToEnd(job.id);
+    expect(v.status).toBe('done');
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]).toContain('CONTINUATION');
+    expect(prompts[1]).toContain('Home block 1');                                    // the saved sections are handed back
+    expect(prompts[1]).not.toContain('Home block 2');
+    const home = v.steps.find(s => s.kind === 'page');
+    expect(home).toMatchObject({ status: 'done', attempts: 1 });                     // progress does not use up an attempt
+    expect(v.log.map(l => l.msg).join('\n')).toMatch(/2 section\(s\) written so far; continuing/);
+    const doc = (await getSiteByProject(project.id)).draft;
+    const page = doc.pages.find(p => p.slug === '');
+    expect(page.sections.map(x => x.name)).toEqual(['Home intro', 'Home block 1', 'Home block 2', 'Home block 3']);
+    expect(page.css).toContain('.page-lede');
+  });
+
+  it('a step that times out with nothing to show retries with lighter thinking and a tighter brief', async () => {
+    const project = await seedProject();
+    const bodies = [];
+    fakeStudio({ page: async (body, n, { u }) => {
+      if (!u.includes('Build the "Home" page')) return undefined;
+      bodies.push({ effort: body.output_config?.effort, u });
+      if (bodies.length < 3) return { text: '', cutOff: 'timeout' };
+      return undefined;
+    } });
+    const job = await startSiteBuild(project, { autoApprove: true }, null);
+    const v = await runToEnd(job.id);
+    expect(v.status).toBe('done');
+    expect(bodies.map(b => b.effort)).toEqual(['high', 'medium', 'low']);
+    expect(bodies[0].u).not.toContain('TIME LIMIT');
+    expect(bodies[1].u).toContain('TIME LIMIT');
+    expect(v.steps.find(s => s.kind === 'page').attempts).toBe(3);
+  });
+
   it('a second runner cannot run the same job at the same time', async () => {
     const project = await seedProject();
     fakeStudio({ brief: async () => { await new Promise(r => setTimeout(r, 150)); return undefined; } });

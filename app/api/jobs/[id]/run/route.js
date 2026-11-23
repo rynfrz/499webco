@@ -18,7 +18,7 @@ export const POST = handle(async (req, { params }) => {
   const staff = isStaff(user);
   if (!staff && !(await membershipFor(user.id, job.projectId))) throw { status: 404, message: 'Job not found' };
   if (!staff && job.kind === 'site_build') throw { status: 403, message: 'Not allowed' };
-  const view = await runJob(params.id, { budgetMs: 235000 });
+  const view = await runJob(params.id, { budgetMs: 282000 });
   if (staff) return json({ job: view });
   return json({ job: { id: view.id, kind: view.kind, status: view.status, stage: view.stage, progress: view.progress, error: view.status === 'error' ? 'This could not be completed. Please try again or contact us.' : '', result: view.result } });
 });
