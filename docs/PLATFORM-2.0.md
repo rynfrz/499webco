@@ -116,6 +116,8 @@ These need things only the owner has. Each is a short check once the item is ava
 
 ## Known limitations
 
+- A single generation request may run for up to 800 seconds, the maximum on Vercel Pro with Fluid compute. A page that is cut off at that limit continues from its finished sections in the next request; a step that produces nothing in time is retried with lighter thinking.
+
 - Sites converted from the classic builder with **Platform Conversion** keep their original inline script and navigation; they become editable section by section but are not restructured. Use Multipage Conversion or Full Redesign for the full structure.
 - The responsive render check runs in the admin's browser, not on the server.
 - Legacy `maxTokens` in Settings is ignored; the new setting is "Max output tokens" under AI.

@@ -5,7 +5,7 @@ import { callModel, extractHtml } from '@/lib/anthropic';
 import { injectLogo, stripLogo } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300;
+export const maxDuration = 800;   // the Pro + Fluid compute maximum
 
 export async function POST(req) {
   try {
@@ -22,7 +22,7 @@ export async function POST(req) {
     const logo = project.business.logo;
     const currentHtml = stripLogo(project.generatedHtml, logo);
     const r = await callModel({
-      settings: s, task: 'content', override: s.model ? { model: s.model } : null, projectId, deadlineMs: 285000,
+      settings: s, task: 'content', override: s.model ? { model: s.model } : null, projectId, deadlineMs: 780000,
       system: 'You are an elite front-end engineer. Apply the requested change to the HTML file with the same design quality, keeping everything else intact. Preserve the literal token {{LOGO_SRC}} wherever it appears. Output ONLY the complete updated HTML file, no commentary, no fences.',
       prompt: `CHANGE REQUEST: ${instruction}\n\nCURRENT FILE:\n${currentHtml}`
     });

@@ -1,4 +1,4 @@
-// Timeout-safe generation. Runs on Pro with maxDuration up to 300s.
+// Timeout-safe generation. Runs on Pro (Fluid compute) with maxDuration up to 800s.
 // Streams progress to the client AND persists the finished site to both the
 // project row and a job row — so even if the user closes the tab, the result is
 // saved and appears when they reopen the project. /api/jobs/[id] allows polling.
@@ -10,7 +10,7 @@ import { makeDemoSite } from '@/lib/demoSite';
 import { injectLogo } from '@/lib/projectModel';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300;
+export const maxDuration = 800;   // the Pro + Fluid compute maximum
 
 export async function POST(req) {
   let user;
@@ -45,7 +45,7 @@ export async function POST(req) {
           // Classic single-page build: the configured default model, up to the output ceiling.
           const r = await callModel({
             settings, task: 'utility', override: settings.model ? { model: settings.model } : null,
-            system: WEBSITE_SYSTEM_PROMPT, prompt: buildWebsitePrompt(project), projectId, jobId, deadlineMs: 285000,
+            system: WEBSITE_SYSTEM_PROMPT, prompt: buildWebsitePrompt(project), projectId, jobId, deadlineMs: 780000,
             onText: chunk => { chars += chunk.length; send(controller, { type: 'progress', kb: +(chars / 1024).toFixed(1) }); }
           });
           if (r.truncated) throw new Error('The site was cut off at the output limit. Raise "Max output tokens" in Settings or use the multipage builder.');

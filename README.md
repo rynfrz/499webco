@@ -6,7 +6,7 @@ The desktop pipeline, rebuilt as a multi-user web app: login, two roles (admin /
 
 ## Architecture at a glance
 
-- **Next.js (App Router)** on Vercel. Pro plan assumed (generation runs up to 300s).
+- **Next.js (App Router)** on Vercel. Pro plan with Fluid compute assumed (a generation request may run up to 800s).
 - **Postgres (Vercel/Neon)** holds users, settings, projects, published previews, and generation jobs. Nothing is stored on the filesystem (serverless is ephemeral).
 - **Auth**: bcrypt password hashing + a signed JWT in an httpOnly cookie. `middleware.js` gates everything under `/admin` and `/api`. Role checks run in the route handlers.
 - **One domain, no collisions**: the tool is at `499web.co/admin`; published previews are served by the same app at `499web.co/preview/<slug>/` straight from Postgres; the portfolio is at `499web.co/portfolio`; the site root serves your chosen homepage.

@@ -22,13 +22,17 @@ export function useJobRunner(onUpdate) {
     }, 2500);
     let last = null, failures = 0;
     try {
-      for (let i = 0; i < 80; i++) {
+      // One request can run for many minutes (a slow model thinking hard about a page).
+      // Only requests that actually advanced the job count towards the cap; waiting on a
+      // request that is still running elsewhere does not.
+      for (let runs = 0; runs < 120;) {
         try {
           const d = await api(`/api/jobs/${jobId}/run`, { method: 'POST', body: {} });
           last = d.job; failures = 0; onUpdate(d.job);
           if (d.job.status !== 'running') break;
           // Another tab/request holds the job: wait instead of spinning.
-          if (d.job.running) await new Promise(r => setTimeout(r, 3000));
+          if (d.job.running) await new Promise(r => setTimeout(r, 5000));
+          else runs++;
         } catch (e) {
           // A dropped connection or a timed-out request: the job itself is durable, so just carry on.
           if (++failures > 6) throw e;
