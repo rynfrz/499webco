@@ -96,6 +96,12 @@ describe('deploying onto the existing production database', () => {
     const versions = await sql`SELECT kind, label FROM site_versions`;
     expect(versions).toEqual([{ kind: 'legacy', label: 'Original single-page site' }]);
     const p = await getProject('p_live');
+    expect(p.siteId).toBe(made.siteId);                               // the workspace can show the site tools after a reload
+    expect(p.siteEngine).toBeUndefined();                             // still a classic site until an upgrade is approved
+    // A project whose site record was created before this link existed is repaired when it is opened.
+    await sql`UPDATE projects SET data = data - 'siteId' WHERE id = 'p_live'`;
+    expect((await (await projectGET(jsonReq('/x'), { params: { id: 'p_live' } })).json()).project.siteId).toBe(made.siteId);
+    expect((await getProject('p_live')).siteId).toBe(made.siteId);
     expect(p.status).toBe('launched');
     expect(p.generatedHtml).toBe(OLD_HTML);
   });

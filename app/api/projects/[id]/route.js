@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sql, initDb } from '@/lib/db';
+import { sql, initDb, patchProject } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -21,6 +21,12 @@ export async function GET(req, { params }) {
     await initDb();
     const p = await load(params.id);
     if (!p) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    // A classic project whose upgrade tools were opened has a site record; make sure the project knows it,
+    // otherwise a staged upgrade would be hidden behind "Open upgrade tools" after a reload.
+    if (!p.siteId) {
+      const site = (await sql`SELECT id FROM sites WHERE project_id = ${params.id} LIMIT 1`)[0];
+      if (site) { p.siteId = site.id; await patchProject(params.id, { siteId: site.id }); }
+    }
     return NextResponse.json({ project: p });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: e.status || 500 });

@@ -638,15 +638,27 @@ function Website({ p, setP, id, toast, go, reload, hasKey }) {
     );
   }
 
+  // Site tools are open: they come first, so a staged upgrade waiting for review is the first thing on the page.
+  if (siteId) {
+    return (
+      <>
+        <SitePanel project={p} siteId={siteId} toast={toast} onProjectChanged={reload} hasKey={hasKey} />
+        <details className="card" style={{ marginTop: 18 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Classic single-page site: preview and quick revisions</summary>
+          <div style={{ marginTop: 14 }}><Preview p={p} setP={setP} id={id} toast={toast} go={go} /></div>
+        </details>
+        <div className="btn-row"><button className="btn primary" onClick={go}>Continue → Deliver</button></div>
+      </>
+    );
+  }
+
   return (
     <>
       <Preview p={p} setP={setP} id={id} toast={toast} go={go} />
       <div className="card" style={{ marginTop: 18 }}>
         <div className="card-title">Upgrade, versions &amp; rollback</div>
         <div className="hint" style={{ marginBottom: 12 }}>This is a classic single-page site. You can convert it to the editable format (keeps its look), refresh the design, expand it into a multipage site, or fully redesign it. Each upgrade is staged for review and can be rolled back.</div>
-        {!siteId
-          ? <button className="btn primary" onClick={openTools} disabled={opening}>{opening ? <span className="spinner" /> : 'Open upgrade tools'}</button>
-          : <SitePanel project={p} siteId={siteId} toast={toast} onProjectChanged={reload} hasKey={hasKey} />}
+        <button className="btn primary" onClick={openTools} disabled={opening}>{opening ? <span className="spinner" /> : 'Open upgrade tools'}</button>
       </div>
     </>
   );
